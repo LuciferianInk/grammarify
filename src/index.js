@@ -90,14 +90,23 @@ function Grammarify(){
                 // Capitalize words if necessary
                 if (i > 0){
                     endingPunctuationIndex = endingPunctuation[i-1] !== ""
-                }                
-                if (i === 0 || endingPunctuationIndex){
-                    newWords[i] = newWords[i][0].toUpperCase() + newWords[i].substr(1)
-                }
+                }         
+                // These extra comparisons address some edge cases where an elipsis would result in a capitalized
+                // word following it. For example, this:
+                //   "I was thinking yesterday... to test you."
+                // Would result in this:
+                //   "I was thinking yesterday... To test you."
+                if (i === 0 || endingPunctuationIndex && !newWords[i-1].endsWith('..') && !newWords[i-2].endsWith('..')){
+                    newWords[i] = newWords[i][0].toUpperCase() + newWords[i].substring(1);
+                }       
 
-                // Add leading space to word
-                if (i !== 0){
-                    newWords[i] = " " + newWords[i]
+                // Add a leading space to words
+                // The additional comparison addresses an edge case where the following statement:
+                //   "I was thinking yesterday..that I should go outside."
+                // Would turn into this:
+                //   "I was thinking yesterday.. . that I should go outside."
+                if (i !== 0 && newWords[i] !== '.'){
+                    newWords[i] = " " + newWords[i];
                 }
             }
 
@@ -110,9 +119,7 @@ function Grammarify(){
                 lastCharacter !== "!" &&
                 lastCharacter !== "?" &&
                 lastCharacter !== `"` &&
-                lastCharacter !== `'` &&
-                lastCharacter !== `”` &&
-                lastCharacter !== `’`){
+                lastCharacter !== `”`){
                     newWords[lastWord] = newWords[lastWord] + "."
                 }
 
@@ -274,7 +281,7 @@ function Grammarify_SMS(){
         "itt": "in this thread",
         "ive": "I've",
         "kinda": "kind of",
-        "lol": "laughing out loud",
+        "lol": "LOL",
         "msg": "message",
         "n/a": "N/A",
         "n00b": "newbie",
@@ -288,6 +295,7 @@ function Grammarify_SMS(){
         "plz": "please",
         "pov": "point of view",
         "ppl": "people",
+        "rofl": "ROFL",
         "rtfm": "read the fucking manual",
         "shes": "she's",           
         "tba": "to be announced",
