@@ -1,131 +1,130 @@
 'use strict'
 
-exports = module.exports = new Grammarify()
+export default class Grammarify {
 
-function Grammarify(){
+    constructor(substitutionMap) {
+        this.substitutionMap = substitutionMap
+        this.preProcessMap = new Grammarify_PreProcess()
+        this.smsMap = new Grammarify_SMS(this.substitutionMap)
+        this.disconnectedMap = new Grammarify_Disconnected()
+    }
 
-    // Private variables
-    const preProcessMap = new Grammarify_PreProcess()
-    const smsMap = new Grammarify_SMS()
-    const disconnectedMap = new Grammarify_Disconnected()
-
-    return {
-        clean: function(string){
-            if (string.length === 0){
-                return ""
-            }
-
-            // If URL formatting is found, just return the string untouched.
-            if (string.match(`(?:\/\/)`)) return string
-
-            // Replace unicode characters that break parsing
-            string = string
-                .replace(/[\u2018\u2019]/g, "'")
-                .replace(/[\u201C\u201D]/g, '"')
-
-            // Run through pre-processing
-            // fixing periods and other characters
-            string = preProcessMap.fixPeriodAndEllipsis(string)
-            string = preProcessMap.fixSpaceAfterCharacter(string)
-
-            // Get rid of all whitespace
-            const words = string.split(" ")
-            let newWords = words.filter(w => w.length !== 0)
-
-            // Fix stretched words
-            newWords = smsMap.fixStretching(newWords)
-
-            // Replace shorthand/improper grammar
-            // the spellchecker might miss
-            newWords = smsMap.fixShorthand(newWords)
-
-            // Fix words that should really be
-            // one word instead of two
-            newWords = disconnectedMap.fixSeparated(newWords)
-
-            // Save where there is existing punctuation
-            let endingPunctuation = []
-            for (let i = 0; i < newWords.length; i++){
-                if (newWords[i].indexOf(".") >= 0){
-                    endingPunctuation.push(".")
-                } else if (newWords[i].indexOf("!") >= 0){
-                    endingPunctuation.push("!")
-                } else if (newWords[i].indexOf("?") >= 0){
-                    endingPunctuation.push("?")                    
-                } else {
-                    endingPunctuation.push("")
-                }
-            }
-            
-            
-            // Clean the sentence
-            // main logic loop
-            const duplicates = ["the", "a", "an", "and", "but", "or", "nor", "for", "so", "yet"]
-            let endingPunctuationIndex = false
-            let lastCharacter = ""
-            let spcheckThisWord = ""
-            let preSpellcheck = ""
-            for (let i = 0; i < newWords.length; i++){
-
-                // Remove words that are safe to delete if duplicated after each other
-                if (i > 0 && 
-                    newWords[i] === newWords[i-1].trim().toLowerCase() &&
-                    duplicates.indexOf(newWords[i].toLowerCase()) >= 0){
-
-                    newWords.splice(i, 1)
-                    i--
-                    continue
-                }
-
-                // Spellcheck words
-                // remove ending punctuation first
-                preSpellcheck = newWords[i].match(/[\W]+$/g)
-
-                if (preSpellcheck !== null){
-                    spcheckThisWord = newWords[i].replace(/[\W]+$/g, "")
-                } else {
-                    spcheckThisWord = newWords[i]
-                }
-
-                // Capitalize words if necessary
-                if (i > 0){
-                    endingPunctuationIndex = endingPunctuation[i-1] !== ""
-                }         
-                // These extra comparisons address some edge cases where an elipsis would result in a capitalized
-                // word following it. For example, this:
-                //   "I was thinking yesterday... to test you."
-                // Would result in this:
-                //   "I was thinking yesterday... To test you."
-                if (i === 0 || endingPunctuationIndex && !newWords[i-1].endsWith('..') && !newWords[i-2].endsWith('..')){
-                    newWords[i] = newWords[i][0].toUpperCase() + newWords[i].substring(1);
-                }       
-
-                // Add a leading space to words
-                // The additional comparison addresses an edge case where the following statement:
-                //   "I was thinking yesterday..that I should go outside."
-                // Would turn into this:
-                //   "I was thinking yesterday.. . that I should go outside."
-                if (i !== 0 && newWords[i] !== '.'){
-                    newWords[i] = " " + newWords[i];
-                }
-            }
-
-            // Add ending period if necessary
-            const lastWord = newWords.length - 1
-
-            // Only if the word doesn't already end in punctuation
-            lastCharacter = newWords[lastWord][newWords[lastWord].length-1]
-            if (lastCharacter !== "." &&
-                lastCharacter !== "!" &&
-                lastCharacter !== "?" &&
-                lastCharacter !== `"` &&
-                lastCharacter !== `”`){
-                    newWords[lastWord] = newWords[lastWord] + "."
-                }
-
-            return newWords.join("")
+    clean(string){
+        if (string.length === 0){
+            return ""
         }
-    }    
+
+        // If URL formatting is found, just return the string untouched.
+        if (string.match(`(?:\/\/)`)) return string
+
+        // Replace unicode characters that break parsing
+        string = string
+            .replace(/[\u2018\u2019]/g, "'")
+            .replace(/[\u201C\u201D]/g, '"')
+
+        // Run through pre-processing
+        // fixing periods and other characters
+        string = this.preProcessMap.fixPeriodAndEllipsis(string)
+        string = this.preProcessMap.fixSpaceAfterCharacter(string)
+
+        // Get rid of all whitespace
+        const words = string.split(" ")
+        let newWords = words.filter(w => w.length !== 0)
+
+        // Fix stretched words
+        newWords = this.smsMap.fixStretching(newWords)
+
+        // Replace shorthand/improper grammar
+        // the spellchecker might miss
+        newWords = this.smsMap.fixShorthand(newWords)
+
+        // Fix words that should really be
+        // one word instead of two
+        newWords = this.disconnectedMap.fixSeparated(newWords)
+
+        // Save where there is existing punctuation
+        let endingPunctuation = []
+        for (let i = 0; i < newWords.length; i++){
+            if (newWords[i].indexOf(".") >= 0){
+                endingPunctuation.push(".")
+            } else if (newWords[i].indexOf("!") >= 0){
+                endingPunctuation.push("!")
+            } else if (newWords[i].indexOf("?") >= 0){
+                endingPunctuation.push("?")                    
+            } else {
+                endingPunctuation.push("")
+            }
+        }
+        
+        
+        // Clean the sentence
+        // main logic loop
+        const duplicates = ["the", "a", "an", "and", "but", "or", "nor", "for", "so", "yet"]
+        let endingPunctuationIndex = false
+        let lastCharacter = ""
+        let spcheckThisWord = ""
+        let preSpellcheck = ""
+        for (let i = 0; i < newWords.length; i++){
+
+            // Remove words that are safe to delete if duplicated after each other
+            if (i > 0 && 
+                newWords[i] === newWords[i-1].trim().toLowerCase() &&
+                duplicates.indexOf(newWords[i].toLowerCase()) >= 0){
+
+                newWords.splice(i, 1)
+                i--
+                continue
+            }
+
+            // Spellcheck words
+            // remove ending punctuation first
+            preSpellcheck = newWords[i].match(/[\W]+$/g)
+
+            if (preSpellcheck !== null){
+                spcheckThisWord = newWords[i].replace(/[\W]+$/g, "")
+            } else {
+                spcheckThisWord = newWords[i]
+            }
+
+            // Capitalize words if necessary
+            if (i > 0){
+                endingPunctuationIndex = endingPunctuation[i-1] !== ""
+            }
+            
+            // These extra comparisons address some edge cases where an elipsis would result in a capitalized
+            // word following it. For example, this:
+            //   "I was thinking yesterday... to test you."
+            // Would result in this:
+            //   "I was thinking yesterday... To test you."
+            if (i === 0 || endingPunctuationIndex && [".", "?", "!", `"`].includes(newWords[i-1].slice(-1)) && !newWords[i-1].endsWith('..') && !newWords[i-2].endsWith('..')){
+                newWords[i] = newWords[i][0].toUpperCase() + newWords[i].substring(1);
+            }       
+
+            // Add a leading space to words
+            // The additional comparison addresses an edge case where the following statement:
+            //   "I was thinking yesterday..that I should go outside."
+            // Would turn into this:
+            //   "I was thinking yesterday.. . that I should go outside."
+            if (i !== 0 && newWords[i] !== '.'){
+                newWords[i] = " " + newWords[i];
+            }
+        }
+
+        // Add ending period if necessary
+        const lastWord = newWords.length - 1
+
+        // Only if the word doesn't already end in punctuation
+        lastCharacter = newWords[lastWord][newWords[lastWord].length-1]
+        if (lastCharacter !== "." &&
+            lastCharacter !== "!" &&
+            lastCharacter !== "?" &&
+            lastCharacter !== `"` &&
+            lastCharacter !== `”`){
+                newWords[lastWord] = newWords[lastWord] + "."
+            }
+
+        return newWords.join("")
+    }  
 }
 
 function Grammarify_PreProcess(){
@@ -189,15 +188,11 @@ function Grammarify_PreProcess(){
                     // ie. "the pig.ran"
                     //     "the pig .ran"
                     //     "the pig . ran"
-                    // There is a bug related to this section. If you run the following:
-                    // grammar.clean('The quick... brown.')
-                    // You will get:
-                    // "The quick.. . brown."
-                    // However, if you remove the period:
-                    // grammar.clean('The quick... brown')
-                    // You get the correct output:
-                    // "The quick... brown."
                     if (badPeriods[i].split(".").length == 2){
+                        if (!badPeriods[i][0].endsWith(" ")) {
+                            badPeriodsIndex++
+                            continue
+                        }
                         tempSearch = input.substr(badPeriodsIndex)
                         tempSearch = tempSearch.replace(badPeriods[i], ". ")
                         input = input.substr(0, badPeriodsIndex) + tempSearch
@@ -232,9 +227,9 @@ function Grammarify_PreProcess(){
     }
 }
 
-function Grammarify_SMS(){
+function Grammarify_SMS(substitutionMap){
 
-    const map = {
+    const defaultMap = {
         "2night": "tonight",
         "2nite": "tonight",
         "afaik": "as far as I know",
@@ -252,6 +247,7 @@ function Grammarify_SMS(){
         "diy": "do it yourself",
         "dont": "don't",
         "dosent": "doesn't",
+        "eachother": "each other",
         "eg": "example",
         "els": "else",
         "faq": "frequently asked questions",
@@ -264,6 +260,7 @@ function Grammarify_SMS(){
         "gotta": "got to",
         "gr8": "great",
         "hada": "had a",
+        "hbu": "how about you",
         "hes": "he's",
         "hf": "have fun",
         "hmu": "hit me up",
@@ -275,6 +272,7 @@ function Grammarify_SMS(){
         "id": "I'd",
         "idk": "I don't know",
         "iirc": "if I remember correctly",
+        "ill": "I'll",
         "im": "I'm",
         "isnt": "isn't",
         "itll": "it'll",
@@ -284,7 +282,6 @@ function Grammarify_SMS(){
         "lol": "LOL",
         "msg": "message",
         "n/a": "N/A",
-        "n00b": "newbie",
         "na": "N/A",
         "nite": "night",
         "noob": "newbie",
@@ -313,6 +310,7 @@ function Grammarify_SMS(){
         "ty": "thank you",
         "tyvm": "thank you very much",
         "u": "you",
+        "ur": "your",
         "w": "with",
         "w/": "with",
         "w/o": "without",
@@ -339,6 +337,8 @@ function Grammarify_SMS(){
         "youre": "you're",
         "youve": "you've",
     }
+
+    const map = {...defaultMap, ...substitutionMap}
 
     const unstretchify = function(word, indicees, pivot){
         // Base cases
@@ -496,7 +496,7 @@ function Grammarify_Disconnected(){
         "himself",
         "nowhere",
         "today",
-        "yourself"
+        "yourself",
     ]
     
     return {
