@@ -3,9 +3,16 @@ Grammarify is a npm package that safely cleans up text that has mispellings, imp
 
 ## How to use
 ```
-var grammarify = require("grammarify");
+import Grammarify from "grammarify"
 
-var sentence = "im so   borrreeedddd";
+const substitutionMap{
+    lol: "LOL",
+    ur: "your",
+}
+
+const grammarify = new Grammarify(substitutionMap)
+
+let sentence = "im so   borrreeedddd"
 console.log(grammarify.clean(sentence)); // "I'm so bored."
 ```
 ---
